@@ -239,7 +239,56 @@
 
 > reversed.
 
+```json
+// The original document
 
+{
+    "id": "test123",
+    "configs": {},
+    "properties": {
+        "friends": ["tomas", "jony"],
+        "id": "test123",
+        "identity": "5130301987120209097765",
+        "name": "tom",
+        "loveColor": ["red"],
+        "grades": {
+            "mathematics": 99,
+            "biology": {
+                "teacher": "Mr.WU"
+            }
+        }
+    }
+}
+
+// The patch
+
+[
+  { "operator": "merge", "path": "grades", "value": {"Physics": 100} },
+  { "operator": "merge", "path": "loveColor", "value": ["yellow"] }
+]
+
+// The result
+
+{
+    "id": "test123",
+    "configs": {},
+    "properties": {
+        "friends": ["tomas", "jony"],
+        "id": "test123",
+        "identity": "5130301987120209097765",
+        "name": "tom",
+        "loveColor": ["red", "yellow"],
+        "grades": {
+            "Physics": 100,
+            "mathematics": 99,
+            "biology": {
+                "teacher": "Mr.WU"
+            }
+        },
+        "teachers": ["Mr.WU"]
+    }
+}
+```
 
 
 ## reference
