@@ -166,6 +166,8 @@ curl -X PUT "http://localhost:3500/v1.0/invoke/core/method/v1/plugins/abcd/entit
 http://localhost:3500/v1.0/invoke/core/method/v1/plugins/{plugin}/entities/{entity_id}?owner={owner}&type={type}
 ```
 
+>  [详情及demo](../jsonpatch/patch.md)
+
 **Params：**
 
 | Name | Type | Required | Where | Description |
