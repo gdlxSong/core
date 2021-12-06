@@ -10,6 +10,8 @@ import (
 
 	Core_v1 "github.com/tkeel-io/core/api/core/v1"
 	"github.com/tkeel-io/core/pkg/entities"
+	"github.com/tkeel-io/core/pkg/placement"
+	"github.com/tkeel-io/core/pkg/placement/raft"
 	"github.com/tkeel-io/core/pkg/search"
 	"github.com/tkeel-io/core/pkg/server"
 	"github.com/tkeel-io/core/pkg/service"
@@ -98,11 +100,35 @@ func main() {
 		panic(err)
 	}
 
+	// new placement.
+	go newPlacementServer()
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, os.Interrupt)
 	<-stop
 
 	if err := coreApp.Stop(context.TODO()); err != nil {
 		panic(err)
+	}
+}
+
+func newPlacementServer() {
+	var err error
+	id := "core001"
+	peers := []raft.PeerInfo{
+		{
+			ID:      id,
+			Address: "localhost:5000",
+		},
+	}
+
+	raftServer := raft.New(id, true, peers, "")
+	if err = raftServer.StartRaft(nil); nil != err {
+		panic("create raft server failed")
+	}
+
+	placementServ := placement.NewPlacementService(context.Background(), raftServer)
+	if err = placementServ.Start("9112"); nil != err {
+		os.Kill.Signal()
 	}
 }
