@@ -12,10 +12,6 @@ import (
 
 const defaultDirPermission = 0755
 
-var (
-	ErrEmptyRaftAddress = errors.New("empty raft address")
-)
-
 func ensureDir(dirName string) error {
 	info, err := os.Stat(dirName)
 	if !os.IsNotExist(err) && !info.Mode().IsDir() {
@@ -26,32 +22,31 @@ func ensureDir(dirName string) error {
 	if err == nil || os.IsExist(err) {
 		return nil
 	}
-	return err
+	return errors.Wrap(err, "create directory failed")
 }
 
-func makeRaftLogCommand(t CommandType, member State) ([]byte, error) {
+func makeRaftLogCommand(t CommandType, data interface{}) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	buf.WriteByte(uint8(t))
-	err := codec.NewEncoder(buf, &codec.MsgpackHandle{}).Encode(member)
+	err := codec.NewEncoder(buf, &codec.MsgpackHandle{}).Encode(data)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "make Raft LogCommand failed")
 	}
 	return buf.Bytes(), nil
 }
 
-func marshalMsgPack(in interface{}) ([]byte, error) {
+func marshalMsgPack(in interface{}) ([]byte, error) { //nolint
 	buf := bytes.NewBuffer(nil)
 	enc := codec.NewEncoder(buf, &codec.MsgpackHandle{})
-	err := enc.Encode(in)
-	if err != nil {
-		return nil, err
+	if err := enc.Encode(in); err != nil {
+		return nil, errors.Wrap(err, "marshal data failed")
 	}
 	return buf.Bytes(), nil
 }
 
 func unmarshalMsgPack(in []byte, out interface{}) error {
 	dec := codec.NewDecoderBytes(in, &codec.MsgpackHandle{})
-	return dec.Decode(out)
+	return errors.Wrap(dec.Decode(out), "unmarshal data failed")
 }
 
 func tryResolveRaftAdvertiseAddr(bindAddr string) (*net.TCPAddr, error) {
@@ -66,5 +61,5 @@ func tryResolveRaftAdvertiseAddr(bindAddr string) (*net.TCPAddr, error) {
 		}
 		time.Sleep(nameResolveRetryInterval)
 	}
-	return nil, err
+	return nil, errors.Wrap(err, "resolve dns failed")
 }

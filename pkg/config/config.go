@@ -15,9 +15,9 @@ import (
 var config = defaultConfig()
 
 type Config struct {
-	Server    Server    `mapstructure:"server"`
-	APIConfig APIConfig `mapstructure:"api_config"`
-	Logger    LogConfig `mapstructure:"logger"`
+	Server    Server          `mapstructure:"server"`
+	Logger    LogConfig       `mapstructure:"logger"`
+	Placement PlacementConfig `mapstructure:"placement"`
 }
 
 type LogConfig struct {
@@ -28,7 +28,8 @@ type LogConfig struct {
 func defaultConfig() Config {
 	return Config{
 		Server: Server{
-			AppPort: 6789,
+			HTTPPort: 6789,
+			GrpcPort: 31233,
 		},
 	}
 }
@@ -62,11 +63,15 @@ func InitConfig(cfgFile string) {
 	}
 
 	// default.
-	viper.SetDefault("server.app_port", 6789)
+	viper.SetDefault("server.http_port", 6789)
+	viper.SetDefault("server.grpc_port", 31233)
 	viper.SetDefault("server.app_id", "core")
+	viper.SetDefault("server.name", "core")
 	viper.SetDefault("server.coroutine_pool_size", 500)
 	viper.SetDefault("logger.level", "info")
 	viper.SetDefault("logger.output_json", false)
+	viper.SetDefault("placement.port", 5000)
+	viper.SetDefault("placement.port", 5000)
 
 	// unmarshal
 	onConfigChanged(fsnotify.Event{Name: "init", Op: fsnotify.Chmod})

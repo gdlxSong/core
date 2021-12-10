@@ -18,7 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PlacementClient interface {
-	Register(ctx context.Context, in *RegisterStatemReq, opts ...grpc.CallOption) (*RegisterStatemResp, error)
+	LookFor(ctx context.Context, in *LookForReq, opts ...grpc.CallOption) (*LookForResp, error)
 	RepotStatus(ctx context.Context, opts ...grpc.CallOption) (Placement_RepotStatusClient, error)
 }
 
@@ -30,9 +30,9 @@ func NewPlacementClient(cc grpc.ClientConnInterface) PlacementClient {
 	return &placementClient{cc}
 }
 
-func (c *placementClient) Register(ctx context.Context, in *RegisterStatemReq, opts ...grpc.CallOption) (*RegisterStatemResp, error) {
-	out := new(RegisterStatemResp)
-	err := c.cc.Invoke(ctx, "/proto.Placement/Register", in, out, opts...)
+func (c *placementClient) LookFor(ctx context.Context, in *LookForReq, opts ...grpc.CallOption) (*LookForResp, error) {
+	out := new(LookForResp)
+	err := c.cc.Invoke(ctx, "/proto.Placement/LookFor", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (c *placementClient) RepotStatus(ctx context.Context, opts ...grpc.CallOpti
 
 type Placement_RepotStatusClient interface {
 	Send(*ReportStatusReq) error
-	Recv() (*ReportStatusResp, error)
+	CloseAndRecv() (*ReportStatusResp, error)
 	grpc.ClientStream
 }
 
@@ -62,7 +62,10 @@ func (x *placementRepotStatusClient) Send(m *ReportStatusReq) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *placementRepotStatusClient) Recv() (*ReportStatusResp, error) {
+func (x *placementRepotStatusClient) CloseAndRecv() (*ReportStatusResp, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
 	m := new(ReportStatusResp)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -74,7 +77,7 @@ func (x *placementRepotStatusClient) Recv() (*ReportStatusResp, error) {
 // All implementations must embed UnimplementedPlacementServer
 // for forward compatibility
 type PlacementServer interface {
-	Register(context.Context, *RegisterStatemReq) (*RegisterStatemResp, error)
+	LookFor(context.Context, *LookForReq) (*LookForResp, error)
 	RepotStatus(Placement_RepotStatusServer) error
 	mustEmbedUnimplementedPlacementServer()
 }
@@ -83,8 +86,8 @@ type PlacementServer interface {
 type UnimplementedPlacementServer struct {
 }
 
-func (UnimplementedPlacementServer) Register(context.Context, *RegisterStatemReq) (*RegisterStatemResp, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
+func (UnimplementedPlacementServer) LookFor(context.Context, *LookForReq) (*LookForResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LookFor not implemented")
 }
 func (UnimplementedPlacementServer) RepotStatus(Placement_RepotStatusServer) error {
 	return status.Errorf(codes.Unimplemented, "method RepotStatus not implemented")
@@ -102,20 +105,20 @@ func RegisterPlacementServer(s grpc.ServiceRegistrar, srv PlacementServer) {
 	s.RegisterService(&Placement_ServiceDesc, srv)
 }
 
-func _Placement_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterStatemReq)
+func _Placement_LookFor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LookForReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PlacementServer).Register(ctx, in)
+		return srv.(PlacementServer).LookFor(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Placement/Register",
+		FullMethod: "/proto.Placement/LookFor",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PlacementServer).Register(ctx, req.(*RegisterStatemReq))
+		return srv.(PlacementServer).LookFor(ctx, req.(*LookForReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -125,7 +128,7 @@ func _Placement_RepotStatus_Handler(srv interface{}, stream grpc.ServerStream) e
 }
 
 type Placement_RepotStatusServer interface {
-	Send(*ReportStatusResp) error
+	SendAndClose(*ReportStatusResp) error
 	Recv() (*ReportStatusReq, error)
 	grpc.ServerStream
 }
@@ -134,7 +137,7 @@ type placementRepotStatusServer struct {
 	grpc.ServerStream
 }
 
-func (x *placementRepotStatusServer) Send(m *ReportStatusResp) error {
+func (x *placementRepotStatusServer) SendAndClose(m *ReportStatusResp) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -154,15 +157,14 @@ var Placement_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*PlacementServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Register",
-			Handler:    _Placement_Register_Handler,
+			MethodName: "LookFor",
+			Handler:    _Placement_LookFor_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "RepotStatus",
 			Handler:       _Placement_RepotStatus_Handler,
-			ServerStreams: true,
 			ClientStreams: true,
 		},
 	},

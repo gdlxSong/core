@@ -20,14 +20,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type RegisterStatemReq struct {
+type State struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	Id      string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Host    string `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
+	Version int64  `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
 }
 
-func (x *RegisterStatemReq) Reset() {
-	*x = RegisterStatemReq{}
+func (x *State) Reset() {
+	*x = State{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_v1_placement_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -35,13 +39,13 @@ func (x *RegisterStatemReq) Reset() {
 	}
 }
 
-func (x *RegisterStatemReq) String() string {
+func (x *State) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RegisterStatemReq) ProtoMessage() {}
+func (*State) ProtoMessage() {}
 
-func (x *RegisterStatemReq) ProtoReflect() protoreflect.Message {
+func (x *State) ProtoReflect() protoreflect.Message {
 	mi := &file_v1_placement_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -53,19 +57,42 @@ func (x *RegisterStatemReq) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RegisterStatemReq.ProtoReflect.Descriptor instead.
-func (*RegisterStatemReq) Descriptor() ([]byte, []int) {
+// Deprecated: Use State.ProtoReflect.Descriptor instead.
+func (*State) Descriptor() ([]byte, []int) {
 	return file_v1_placement_proto_rawDescGZIP(), []int{0}
 }
 
-type RegisterStatemResp struct {
+func (x *State) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *State) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *State) GetVersion() int64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+type LookForReq struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (x *RegisterStatemResp) Reset() {
-	*x = RegisterStatemResp{}
+func (x *LookForReq) Reset() {
+	*x = LookForReq{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_v1_placement_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -73,13 +100,13 @@ func (x *RegisterStatemResp) Reset() {
 	}
 }
 
-func (x *RegisterStatemResp) String() string {
+func (x *LookForReq) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RegisterStatemResp) ProtoMessage() {}
+func (*LookForReq) ProtoMessage() {}
 
-func (x *RegisterStatemResp) ProtoReflect() protoreflect.Message {
+func (x *LookForReq) ProtoReflect() protoreflect.Message {
 	mi := &file_v1_placement_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -91,21 +118,81 @@ func (x *RegisterStatemResp) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RegisterStatemResp.ProtoReflect.Descriptor instead.
-func (*RegisterStatemResp) Descriptor() ([]byte, []int) {
+// Deprecated: Use LookForReq.ProtoReflect.Descriptor instead.
+func (*LookForReq) Descriptor() ([]byte, []int) {
 	return file_v1_placement_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *LookForReq) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type LookForResp struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	State *State `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
+}
+
+func (x *LookForResp) Reset() {
+	*x = LookForResp{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_v1_placement_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *LookForResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LookForResp) ProtoMessage() {}
+
+func (x *LookForResp) ProtoReflect() protoreflect.Message {
+	mi := &file_v1_placement_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LookForResp.ProtoReflect.Descriptor instead.
+func (*LookForResp) Descriptor() ([]byte, []int) {
+	return file_v1_placement_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *LookForResp) GetState() *State {
+	if x != nil {
+		return x.State
+	}
+	return nil
 }
 
 type ReportStatusReq struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	Id     string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name   string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Port   int64    `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	Load   string   `protobuf:"bytes,4,opt,name=load,proto3" json:"load,omitempty"`
+	States []*State `protobuf:"bytes,5,rep,name=states,proto3" json:"states,omitempty"`
 }
 
 func (x *ReportStatusReq) Reset() {
 	*x = ReportStatusReq{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_v1_placement_proto_msgTypes[2]
+		mi := &file_v1_placement_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -118,7 +205,7 @@ func (x *ReportStatusReq) String() string {
 func (*ReportStatusReq) ProtoMessage() {}
 
 func (x *ReportStatusReq) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_placement_proto_msgTypes[2]
+	mi := &file_v1_placement_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -131,7 +218,42 @@ func (x *ReportStatusReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportStatusReq.ProtoReflect.Descriptor instead.
 func (*ReportStatusReq) Descriptor() ([]byte, []int) {
-	return file_v1_placement_proto_rawDescGZIP(), []int{2}
+	return file_v1_placement_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ReportStatusReq) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ReportStatusReq) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ReportStatusReq) GetPort() int64 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *ReportStatusReq) GetLoad() string {
+	if x != nil {
+		return x.Load
+	}
+	return ""
+}
+
+func (x *ReportStatusReq) GetStates() []*State {
+	if x != nil {
+		return x.States
+	}
+	return nil
 }
 
 type ReportStatusResp struct {
@@ -143,7 +265,7 @@ type ReportStatusResp struct {
 func (x *ReportStatusResp) Reset() {
 	*x = ReportStatusResp{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_v1_placement_proto_msgTypes[3]
+		mi := &file_v1_placement_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -156,7 +278,7 @@ func (x *ReportStatusResp) String() string {
 func (*ReportStatusResp) ProtoMessage() {}
 
 func (x *ReportStatusResp) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_placement_proto_msgTypes[3]
+	mi := &file_v1_placement_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -169,29 +291,42 @@ func (x *ReportStatusResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportStatusResp.ProtoReflect.Descriptor instead.
 func (*ReportStatusResp) Descriptor() ([]byte, []int) {
-	return file_v1_placement_proto_rawDescGZIP(), []int{3}
+	return file_v1_placement_proto_rawDescGZIP(), []int{4}
 }
 
 var File_v1_placement_proto protoreflect.FileDescriptor
 
 var file_v1_placement_proto_rawDesc = []byte{
 	0x0a, 0x12, 0x76, 0x31, 0x2f, 0x70, 0x6c, 0x61, 0x63, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x13, 0x0a, 0x11, 0x52,
-	0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x53, 0x74, 0x61, 0x74, 0x65, 0x6d, 0x52, 0x65, 0x71,
-	0x22, 0x14, 0x0a, 0x12, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x53, 0x74, 0x61, 0x74,
-	0x65, 0x6d, 0x52, 0x65, 0x73, 0x70, 0x22, 0x11, 0x0a, 0x0f, 0x52, 0x65, 0x70, 0x6f, 0x72, 0x74,
-	0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x22, 0x12, 0x0a, 0x10, 0x52, 0x65, 0x70,
-	0x6f, 0x72, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x32, 0x90, 0x01,
-	0x0a, 0x09, 0x50, 0x6c, 0x61, 0x63, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x12, 0x3f, 0x0a, 0x08, 0x52,
-	0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x12, 0x18, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
-	0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x53, 0x74, 0x61, 0x74, 0x65, 0x6d, 0x52, 0x65,
-	0x71, 0x1a, 0x19, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74,
-	0x65, 0x72, 0x53, 0x74, 0x61, 0x74, 0x65, 0x6d, 0x52, 0x65, 0x73, 0x70, 0x12, 0x42, 0x0a, 0x0b,
+	0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x45, 0x0a, 0x05, 0x53,
+	0x74, 0x61, 0x74, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x68, 0x6f, 0x73, 0x74, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x04, 0x68, 0x6f, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73,
+	0x69, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69,
+	0x6f, 0x6e, 0x22, 0x1c, 0x0a, 0x0a, 0x4c, 0x6f, 0x6f, 0x6b, 0x46, 0x6f, 0x72, 0x52, 0x65, 0x71,
+	0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64,
+	0x22, 0x31, 0x0a, 0x0b, 0x4c, 0x6f, 0x6f, 0x6b, 0x46, 0x6f, 0x72, 0x52, 0x65, 0x73, 0x70, 0x12,
+	0x22, 0x0a, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x05, 0x73, 0x74,
+	0x61, 0x74, 0x65, 0x22, 0x83, 0x01, 0x0a, 0x0f, 0x52, 0x65, 0x70, 0x6f, 0x72, 0x74, 0x53, 0x74,
+	0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x70,
+	0x6f, 0x72, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x04, 0x70, 0x6f, 0x72, 0x74, 0x12,
+	0x12, 0x0a, 0x04, 0x6c, 0x6f, 0x61, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6c,
+	0x6f, 0x61, 0x64, 0x12, 0x24, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x65, 0x73, 0x18, 0x05, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x74, 0x61, 0x74,
+	0x65, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x65, 0x73, 0x22, 0x12, 0x0a, 0x10, 0x52, 0x65, 0x70,
+	0x6f, 0x72, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x32, 0x7f, 0x0a,
+	0x09, 0x50, 0x6c, 0x61, 0x63, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x12, 0x30, 0x0a, 0x07, 0x4c, 0x6f,
+	0x6f, 0x6b, 0x46, 0x6f, 0x72, 0x12, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4c, 0x6f,
+	0x6f, 0x6b, 0x46, 0x6f, 0x72, 0x52, 0x65, 0x71, 0x1a, 0x12, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x2e, 0x4c, 0x6f, 0x6f, 0x6b, 0x46, 0x6f, 0x72, 0x52, 0x65, 0x73, 0x70, 0x12, 0x40, 0x0a, 0x0b,
 	0x52, 0x65, 0x70, 0x6f, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x16, 0x2e, 0x70, 0x72,
 	0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x70, 0x6f, 0x72, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73,
 	0x52, 0x65, 0x71, 0x1a, 0x17, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x70, 0x6f,
-	0x72, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x28, 0x01, 0x30, 0x01,
-	0x42, 0x06, 0x5a, 0x04, 0x2e, 0x3b, 0x76, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x72, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x28, 0x01, 0x42, 0x06,
+	0x5a, 0x04, 0x2e, 0x3b, 0x76, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -206,23 +341,26 @@ func file_v1_placement_proto_rawDescGZIP() []byte {
 	return file_v1_placement_proto_rawDescData
 }
 
-var file_v1_placement_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_v1_placement_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_v1_placement_proto_goTypes = []interface{}{
-	(*RegisterStatemReq)(nil),  // 0: proto.RegisterStatemReq
-	(*RegisterStatemResp)(nil), // 1: proto.RegisterStatemResp
-	(*ReportStatusReq)(nil),    // 2: proto.ReportStatusReq
-	(*ReportStatusResp)(nil),   // 3: proto.ReportStatusResp
+	(*State)(nil),            // 0: proto.State
+	(*LookForReq)(nil),       // 1: proto.LookForReq
+	(*LookForResp)(nil),      // 2: proto.LookForResp
+	(*ReportStatusReq)(nil),  // 3: proto.ReportStatusReq
+	(*ReportStatusResp)(nil), // 4: proto.ReportStatusResp
 }
 var file_v1_placement_proto_depIdxs = []int32{
-	0, // 0: proto.Placement.Register:input_type -> proto.RegisterStatemReq
-	2, // 1: proto.Placement.RepotStatus:input_type -> proto.ReportStatusReq
-	1, // 2: proto.Placement.Register:output_type -> proto.RegisterStatemResp
-	3, // 3: proto.Placement.RepotStatus:output_type -> proto.ReportStatusResp
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: proto.LookForResp.state:type_name -> proto.State
+	0, // 1: proto.ReportStatusReq.states:type_name -> proto.State
+	1, // 2: proto.Placement.LookFor:input_type -> proto.LookForReq
+	3, // 3: proto.Placement.RepotStatus:input_type -> proto.ReportStatusReq
+	2, // 4: proto.Placement.LookFor:output_type -> proto.LookForResp
+	4, // 5: proto.Placement.RepotStatus:output_type -> proto.ReportStatusResp
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_v1_placement_proto_init() }
@@ -232,7 +370,7 @@ func file_v1_placement_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_v1_placement_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RegisterStatemReq); i {
+			switch v := v.(*State); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -244,7 +382,7 @@ func file_v1_placement_proto_init() {
 			}
 		}
 		file_v1_placement_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RegisterStatemResp); i {
+			switch v := v.(*LookForReq); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -256,7 +394,7 @@ func file_v1_placement_proto_init() {
 			}
 		}
 		file_v1_placement_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReportStatusReq); i {
+			switch v := v.(*LookForResp); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -268,6 +406,18 @@ func file_v1_placement_proto_init() {
 			}
 		}
 		file_v1_placement_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ReportStatusReq); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_v1_placement_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ReportStatusResp); i {
 			case 0:
 				return &v.state
@@ -286,7 +436,7 @@ func file_v1_placement_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_v1_placement_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

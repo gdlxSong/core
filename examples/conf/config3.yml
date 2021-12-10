@@ -1,7 +1,7 @@
 server:
-  name: core
-  http_port: 6789
-  grpc_port: 31233
+  name: core3
+  http_port: 6787
+  grpc_port: 31231
   tseries_servers:
     - name: time_series
       enabled: true
@@ -19,7 +19,7 @@ server:
 logger:
   output_json: true
 placement:
-  port: 5000
+  port: 5002
   raft:
     servers:
       - id: core

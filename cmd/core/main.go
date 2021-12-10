@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
 	Core_v1 "github.com/tkeel-io/core/api/core/v1"
+	"github.com/tkeel-io/core/pkg/config"
 	"github.com/tkeel-io/core/pkg/entities"
 	"github.com/tkeel-io/core/pkg/placement"
 	"github.com/tkeel-io/core/pkg/placement/raft"
@@ -23,30 +26,29 @@ import (
 )
 
 var (
-	Name          string
-	HTTPAddr      string
-	GRPCAddr      string
+	CfgFile       string
 	SearchBrokers string
 )
 
 func init() {
-	flag.StringVar(&Name, "name", "core", "app name.")
-	flag.StringVar(&HTTPAddr, "http_addr", ":6789", "http listen address.")
-	flag.StringVar(&GRPCAddr, "grpc_addr", ":31233", "grpc listen address.")
+	flag.StringVar(&CfgFile, "conf", "config.yml", "core configuration file.")
 	flag.StringVar(&SearchBrokers, "search_brokers", "http://localhost:9200", "search brokers address.")
 }
 
 func main() {
 	flag.Parse()
+	config.InitConfig(CfgFile)
 
-	httpSrv := server.NewHTTPServer(HTTPAddr)
-	grpcSrv := server.NewGRPCServer(GRPCAddr)
+	cfg := config.GetConfig()
+
+	httpSrv := server.NewHTTPServer(fmt.Sprintf(":%d", cfg.Server.HTTPPort))
+	grpcSrv := server.NewGRPCServer(fmt.Sprintf(":%d", cfg.Server.GrpcPort))
 	serverList := []transport.Server{httpSrv, grpcSrv}
 
-	coreApp := app.New(Name,
+	coreApp := app.New(cfg.Server.Name,
 		&log.Conf{
-			App:   Name,
-			Level: "debug",
+			App:   cfg.Server.Name,
+			Level: cfg.Logger.Level,
 			Dev:   true,
 		},
 		serverList...,
@@ -114,21 +116,26 @@ func main() {
 
 func newPlacementServer() {
 	var err error
-	id := "core001"
-	peers := []raft.PeerInfo{
-		{
-			ID:      id,
-			Address: "localhost:5000",
-		},
+	cfg := config.GetConfig()
+	peers := make([]raft.PeerInfo, 0)
+	for _, peer := range cfg.Placement.Raft.Servers {
+		peers = append(peers, raft.PeerInfo{
+			ID:      peer.ID,
+			Address: peer.Addr,
+		})
 	}
 
-	raftServer := raft.New(id, true, peers, "")
+	raftServer := raft.New(cfg.Server.Name, true, peers, cfg.Placement.Raft.LogStorePath)
 	if err = raftServer.StartRaft(nil); nil != err {
-		panic("create raft server failed")
+		panic(err)
 	}
 
 	placementServ := placement.NewPlacementService(context.Background(), raftServer)
-	if err = placementServ.Start("9112"); nil != err {
-		os.Kill.Signal()
-	}
+	go func() {
+		if err = placementServ.Start(strconv.FormatInt(int64(cfg.Placement.Port), 10)); nil != err {
+			os.Kill.Signal()
+		}
+	}()
+
+	placementServ.MonitorLeadership()
 }

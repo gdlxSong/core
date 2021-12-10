@@ -51,7 +51,6 @@ type Server struct {
 
 // New creates Raft server node.
 func New(id string, inMem bool, peers []PeerInfo, logStorePath string) *Server {
-
 	return &Server{
 		id:               id,
 		inMem:            inMem,
@@ -75,7 +74,7 @@ func (s *Server) init() error {
 
 // StartRaft starts Raft node with Raft protocol configuration. if config is nil,
 // the default config will be used.
-func (s *Server) StartRaft(config *raft.Config) error {
+func (s *Server) StartRaft(config *raft.Config) error { //nolint
 	// If we have an unclean exit then attempt to close the Raft store.
 	defer func() {
 		if s.raft == nil && s.raftStore != nil {
@@ -113,20 +112,21 @@ func (s *Server) StartRaft(config *raft.Config) error {
 		// Create the backend raft store for logs and stable storage.
 		s.raftStore, err = raftboltdb.NewBoltStore(filepath.Join(s.raftStorePath(), "raft.db"))
 		if err != nil {
-			return err
+			return errors.Wrap(err, "start raft server failed")
 		}
+
 		s.stableStore = s.raftStore
 
 		// Wrap the store in a LogCache to improve performance.
 		s.logStore, err = raft.NewLogCache(raftLogCacheSize, s.raftStore)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "start raft server failed")
 		}
 
 		// Create the snapshot store.
 		s.snapStore, err = raft.NewFileSnapshotStoreWithLogger(s.raftStorePath(), snapshotsRetained, loggerAdapter)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "start raft server failed")
 		}
 	}
 
@@ -156,31 +156,27 @@ func (s *Server) StartRaft(config *raft.Config) error {
 	// bootstrap now.
 	bootstrapConf, err := s.bootstrapConfig(s.peers)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "start raft server failed")
 	}
 
 	if bootstrapConf != nil {
 		if err = raft.BootstrapCluster(
 			s.config, s.logStore, s.stableStore,
 			s.snapStore, s.raftTransport, *bootstrapConf); err != nil {
-			return err
+			return errors.Wrap(err, "start raft server failed")
 		}
 	}
 
 	s.raft, err = raft.NewRaft(s.config, s.fsm, s.logStore, s.stableStore, s.snapStore, s.raftTransport)
-	if err != nil {
-		return err
-	}
 
 	log.Infof("Raft server is starting on %s...", s.raftBind)
-
-	return err
+	return errors.Wrap(err, "start raft server failed")
 }
 
 func (s *Server) bootstrapConfig(peers []PeerInfo) (*raft.Configuration, error) {
 	hasState, err := raft.HasExistingState(s.logStore, s.stableStore, s.snapStore)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "bootstrap raft server failed")
 	}
 
 	if !hasState {
@@ -225,7 +221,7 @@ func (s *Server) IsLeader() bool {
 }
 
 // ApplyCommand applies command log to state machine to upsert or remove members.
-func (s *Server) ApplyCommand(cmdType CommandType, data State) (bool, error) {
+func (s *Server) ApplyCommand(cmdType CommandType, data interface{}) (bool, error) {
 	if !s.IsLeader() {
 		return false, errors.New("this is not the leader node")
 	}
@@ -237,11 +233,15 @@ func (s *Server) ApplyCommand(cmdType CommandType, data State) (bool, error) {
 
 	future := s.raft.Apply(cmdLog, commandTimeout)
 	if err := future.Error(); err != nil {
-		return false, err
+		return false, errors.Wrap(err, "apply log failed")
 	}
 
 	resp := future.Response()
-	return resp.(bool), nil
+	return resp.(bool), nil //nolint
+}
+
+func (s *Server) Address() string {
+	return s.raftBind
 }
 
 // Shutdown shutdown raft server gracefully.

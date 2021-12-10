@@ -1,8 +1,10 @@
 package placement
 
-type PlacementConfig struct {
-	IpAddr string
-}
+import "errors"
+
+var (
+	ErrMissingAddress = errors.New("missing address")
+)
 
 type Placement interface {
 	Register()

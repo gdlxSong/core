@@ -5,33 +5,38 @@ package proto;
 
 option go_package = ".;v1";
 
-
-
-
-message RegisterStatemReq { 
-    
+message State {
+	string id = 1;
+	string host = 2;
+    int64 version = 3;
 }
 
 
-
-
-message RegisterStatemResp {
-
+message LookForReq {
+    string id = 1;
 }
+
+
+message LookForResp {
+    State state = 1;
+}
+
+
 
 
 message ReportStatusReq {
-
+    string id = 1;
+    string name = 2;
+    int64 port = 3;
+    string load = 4;
+    repeated State states = 5;
 }
 
 message ReportStatusResp {
-    
 }
 
-
-
 service Placement {
-    rpc Register(RegisterStatemReq) returns (RegisterStatemResp);
-    rpc RepotStatus(stream ReportStatusReq) returns (stream ReportStatusResp);
+    rpc LookFor(LookForReq) returns (LookForResp);
+    rpc RepotStatus(stream ReportStatusReq) returns (ReportStatusResp);
 }
 
