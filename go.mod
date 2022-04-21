@@ -39,6 +39,8 @@ require (
 	google.golang.org/protobuf v1.27.1
 )
 
+require github.com/qri-io/jsonschema v0.2.1
+
 require (
 	github.com/DataDog/zstd v1.4.6-0.20210211175136-c6db21d202f4 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211026222012-6af4c774c47b // indirect
@@ -71,6 +73,7 @@ require (
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/qri-io/jsonpointer v0.1.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
