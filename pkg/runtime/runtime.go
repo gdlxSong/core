@@ -474,9 +474,9 @@ func (r *Runtime) handleTentacle(ctx context.Context, feed *Feed) *Feed {
 		for _, node := range r.subTree.
 			MatchPrefix(path.FmtWatchKey(entityID, change.Path)) {
 			subEnd, _ := node.(*SubEndpoint)
-			targets = append(targets, subEnd.deliveryID)
+			targets = append(targets, subEnd.runtimeID)
 			log.L().Debug("expression sub matched", zfield.Eid(entityID), zfield.Path(change.Path),
-				zfield.Target(subEnd.target), zfield.Path(subEnd.path), zfield.ID(subEnd.deliveryID), zfield.Expr(subEnd.Expression()))
+				zfield.Target(subEnd.target), zfield.Path(subEnd.path), zfield.RID(subEnd.runtimeID), zfield.Expr(subEnd.Expression()))
 		}
 
 		targets = util.Unique(targets)

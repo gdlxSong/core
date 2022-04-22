@@ -107,7 +107,7 @@ func (r *Runtime) handleSubscribe(ctx context.Context, feed *Feed) *Feed {
 
 			log.L().Debug("expression external sub matched", zfield.Eid(entityID),
 				zfield.Path(patch.Path), zfield.Type(exprInfo.Type), zap.Bool("is_here", exprInfo.isHere),
-				zfield.Target(subEnd.target), zfield.Path(subEnd.path), zfield.ID(subEnd.deliveryID), zfield.Expr(subEnd.Expression()))
+				zfield.Target(subEnd.target), zfield.Path(subEnd.path), zfield.RID(subEnd.runtimeID), zfield.Expr(subEnd.Expression()))
 		}
 	}
 

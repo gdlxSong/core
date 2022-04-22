@@ -72,25 +72,25 @@ type ExpressionInfo struct {
 type SubEndpoint struct {
 	path         string
 	target       string
-	deliveryID   string
+	runtimeID    string
 	expressionID string
 }
 
-func newSubEnd(path, target, exprID, deliveryID string) SubEndpoint {
+func newSubEnd(path, target, exprID, runtimeID string) SubEndpoint {
 	return SubEndpoint{
 		path:         path,
 		target:       target,
-		deliveryID:   deliveryID,
+		runtimeID:    runtimeID,
 		expressionID: exprID,
 	}
 }
 
 func (s *SubEndpoint) ID() string {
-	return s.path + s.deliveryID
+	return s.runtimeID + s.path
 }
 
 func (s *SubEndpoint) String() string {
-	return s.path + s.deliveryID + s.target
+	return s.runtimeID + s.target + s.path
 }
 
 func (s *SubEndpoint) Expression() string {
@@ -112,7 +112,7 @@ func newEvalEnd(path, target, expressionID string) EvalEndpoint {
 }
 
 func (e EvalEndpoint) ID() string {
-	return e.path + e.target
+	return e.target + e.path
 }
 
 func (e *EvalEndpoint) String() string {
