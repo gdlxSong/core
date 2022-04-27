@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -18,9 +17,7 @@ import (
 	zfield "github.com/tkeel-io/core/pkg/logger"
 	"github.com/tkeel-io/core/pkg/mapper"
 	"github.com/tkeel-io/core/pkg/mapper/expression"
-	"github.com/tkeel-io/core/pkg/placement"
 	"github.com/tkeel-io/core/pkg/repository"
-	"github.com/tkeel-io/core/pkg/repository/dao"
 	"github.com/tkeel-io/core/pkg/types"
 	"github.com/tkeel-io/core/pkg/util"
 	xjson "github.com/tkeel-io/core/pkg/util/json"
@@ -86,7 +83,8 @@ func (r *Runtime) DeliveredEvent(ctx context.Context, msg *sarama.ConsumerMessag
 	var err error
 	var ev v1.ProtoEvent
 	if err = v1.Unmarshal(msg.Value, &ev); nil != err {
-		log.L().Error("decode Event", zap.Error(err))
+		log.L().Error("decode Event", zap.Error(err),
+			zfield.Message(string(msg.Value)), zfield.RID(r.id))
 		return
 	}
 
@@ -94,6 +92,9 @@ func (r *Runtime) DeliveredEvent(ctx context.Context, msg *sarama.ConsumerMessag
 }
 
 func (r *Runtime) HandleEvent(ctx context.Context, event v1.Event) error {
+	log.L().Debug("handle event", zfield.RID(r.id),
+		zfield.Event(event), zfield.EvID(event.ID()))
+
 	execer, feed := r.PrepareEvent(ctx, event)
 	feed = execer.Exec(ctx, feed)
 
@@ -108,7 +109,8 @@ func (r *Runtime) HandleEvent(ctx context.Context, event v1.Event) error {
 }
 
 func (r *Runtime) PrepareEvent(ctx context.Context, ev v1.Event) (*Execer, *Feed) {
-	log.L().Info("handle event", zfield.ID(ev.ID()), zfield.Eid(ev.Entity()))
+	log.L().Info("prepare event", zfield.RID(r.id),
+		zfield.ID(ev.ID()), zfield.Eid(ev.Entity()))
 
 	switch ev.Type() {
 	case v1.ETSystem:
@@ -382,6 +384,7 @@ func (r *Runtime) handleComputed(ctx context.Context, feed *Feed) *Feed {
 			Timestamp: time.Now().UnixNano(),
 			Metadata: map[string]string{
 				v1.MetaType:     string(v1.ETEntity),
+				v1.MetaBorn:     "handleComputed",
 				v1.MetaEntityID: target},
 			Data: &v1.ProtoEvent_Patches{
 				Patches: &v1.PatchDatas{
@@ -393,7 +396,7 @@ func (r *Runtime) handleComputed(ctx context.Context, feed *Feed) *Feed {
 	return feed
 }
 
-func (r *Runtime) evalExpression(ctx context.Context, expr dao.Expression) (tdtl.Node, error) {
+func (r *Runtime) evalExpression(ctx context.Context, expr repository.Expression) (tdtl.Node, error) {
 	var (
 		err      error
 		has      bool
@@ -449,7 +452,6 @@ func (r *Runtime) evalExpression(ctx context.Context, expr dao.Expression) (tdtl
 		zfield.Eid(expr.EntityID), zfield.Input(in), zfield.Output(out))
 
 	// clean nil feed.
-
 	if out.Type() == tdtl.Null || out.Type() == tdtl.Undefined {
 		log.L().Warn("invalid eval result", zfield.Eid(expr.EntityID),
 			zap.Any("value", out.String()), zfield.ID(expr.ID), zfield.Expr(expr.Expression))
@@ -457,64 +459,81 @@ func (r *Runtime) evalExpression(ctx context.Context, expr dao.Expression) (tdtl
 	}
 
 	return out, nil
+}
 
+func mergePath(subPath, changePath string) string {
+	// subPath format: entity_id.property_key
+	seg2 := strings.SplitN(subPath, ".", 2)
+	return path.MergePath(seg2[1], changePath)
+}
+
+func whichPrefix(targetPath, changePath string) string {
+	if targetPath == "" || len(targetPath) > len(changePath) {
+		return changePath
+	}
+	return targetPath
 }
 
 func (r *Runtime) handleTentacle(ctx context.Context, feed *Feed) *Feed {
-	log.L().Debug("handle tentacle", zfield.Eid(feed.EntityID), zfield.Event(feed.Event))
+	log.L().Debug("handle tentacle", zfield.Eid(feed.EntityID),
+		zap.Any("changes", feed.Changes), zap.String("state", string(feed.State)))
 
 	// 1. 检查 ret.path 和 订阅列表.
-	var targets sort.StringSlice
+	targets := make(map[string]string)
 	entityID := feed.EntityID
-	var patches = make(map[string][]*v1.PatchData)
+	var patches = make(map[string]*v1.PatchData)
 	for _, change := range feed.Changes {
 		for _, node := range r.subTree.
 			MatchPrefix(path.FmtWatchKey(entityID, change.Path)) {
 			subEnd, _ := node.(*SubEndpoint)
-			targets = append(targets, subEnd.deliveryID)
+			subPath := mergePath(subEnd.path, change.Path)
+			targets[subEnd.deliveryID] = whichPrefix(targets[subEnd.deliveryID], subPath)
 			log.L().Debug("expression sub matched", zfield.Eid(entityID), zfield.Path(change.Path),
 				zfield.Target(subEnd.target), zfield.Path(subEnd.path), zfield.ID(subEnd.deliveryID), zfield.Expr(subEnd.Expression()))
 		}
 
-		targets = util.Unique(targets)
-		for _, target := range targets {
-			patches[target] = append(
-				patches[target],
-				&v1.PatchData{
+		// TODO: 提到for外存在优化空间.
+		for runtimeID, sendPath := range targets {
+			if sendPath == change.Path {
+				patches[runtimeID] = &v1.PatchData{
 					Path:     change.Path,
 					Operator: xjson.OpReplace.String(),
 					Value:    change.Value.Raw(),
-				})
-		}
+				}
+				continue
+			}
 
-		// clean targets.
-		targets = []string{}
+			// select send data.
+			stateIns, _ := NewEntity(feed.EntityID, feed.State)
+			sendVal := stateIns.Get(sendPath)
+			if tdtl.Undefined != sendVal.Type() {
+				patches[runtimeID] = &v1.PatchData{
+					Path:     sendPath,
+					Operator: xjson.OpReplace.String(),
+					Value:    sendVal.Raw(),
+				}
+			}
+		}
 	}
 
 	// 2. dispatch.send()
-	for target, patch := range patches {
-		// check target entity placement.
-		info := placement.Global().Select(target)
-		if info.ID == r.id {
-			log.L().Debug("target entity belong this runtime, ignore dispatch.",
-				zfield.Sender(entityID), zfield.Eid(target), zfield.ID(info.ID))
-			// continue.
-		}
-
-		log.L().Debug("republish event", zfield.ID(r.id),
-			zfield.Target(target), zfield.Value(info), zfield.Value(patch))
+	for runtimeID, sendData := range patches {
+		eventID := util.IG().EvID()
+		log.L().Debug("republish event", zfield.ID(r.id), zfield.RID(r.id),
+			zfield.EvID(eventID), zfield.Target(runtimeID), zfield.Value(sendData))
 
 		// dispatch cache event.
 		r.dispatcher.Dispatch(ctx, &v1.ProtoEvent{
-			Id:        util.IG().EvID(),
+			Id:        eventID,
 			Timestamp: time.Now().UnixNano(),
 			Metadata: map[string]string{
 				v1.MetaType:        string(v1.ETCache),
-				v1.MetaPartitionID: target,
+				v1.MetaBorn:        "handleTentacle",
+				v1.MetaPartitionID: runtimeID,
 				v1.MetaSender:      entityID},
 			Data: &v1.ProtoEvent_Patches{
 				Patches: &v1.PatchDatas{
-					Patches: patch,
+					Patches: []*v1.PatchData{sendData},
 				}},
 		})
 	}
@@ -525,7 +544,7 @@ func (r *Runtime) handleTentacle(ctx context.Context, feed *Feed) *Feed {
 func (r *Runtime) handleCallback(ctx context.Context, feed *Feed) error {
 	var err error
 	event := feed.Event
-	log.L().Debug("handle event, callback.", zfield.ID(event.ID()),
+	log.L().Debug("handle event callback.", zfield.ID(event.ID()),
 		zfield.Eid(event.Entity()), zfield.Header(event.Attributes()))
 
 	if event.CallbackAddr() != "" {
@@ -539,6 +558,7 @@ func (r *Runtime) handleCallback(ctx context.Context, feed *Feed) error {
 				Data: &v1.ProtoEvent_RawData{
 					RawData: feed.State}}
 			ev.SetType(v1.ETCallback)
+			ev.SetAttr(v1.MetaBorn, "handleCallback")
 			ev.SetAttr(v1.MetaResponseStatus, string(types.StatusOK))
 			err = r.dispatcher.Dispatch(ctx, ev)
 		} else {
@@ -550,8 +570,9 @@ func (r *Runtime) handleCallback(ctx context.Context, feed *Feed) error {
 				Data: &v1.ProtoEvent_RawData{
 					RawData: []byte(`{}`)}}
 			ev.SetType(v1.ETCallback)
-			ev.SetAttr(v1.MetaResponseStatus, string(types.StatusError))
+			ev.SetAttr(v1.MetaBorn, "handleCallback")
 			ev.SetAttr(v1.MetaResponseErrCode, feed.Err.Error())
+			ev.SetAttr(v1.MetaResponseStatus, string(types.StatusError))
 			err = r.dispatcher.Dispatch(ctx, ev)
 		}
 	}
@@ -599,15 +620,12 @@ func (r *Runtime) onTemplateChanged(ctx context.Context, entityID, templateID st
 		return errors.Wrap(err, "On Template Changed")
 	}
 
-	// 为什么使用dispatch 异步更新scheme， 而不是直接更新？
-	// 1. 将 templateID 更新 scheme 更新分离，降低 api调用时延.
-	// 2.
-
 	ev := &v1.ProtoEvent{
 		Id:        entityID,
 		Timestamp: time.Now().UnixNano(),
 		Metadata: map[string]string{
 			v1.MetaType:     string(v1.ETEntity),
+			v1.MetaBorn:     "onTemplateChanged",
 			v1.MetaEntityID: entityID,
 			v1.MetaSender:   entityID},
 		Data: &v1.ProtoEvent_Patches{
@@ -622,22 +640,27 @@ func (r *Runtime) onTemplateChanged(ctx context.Context, entityID, templateID st
 }
 
 type tsData struct {
-	TS    int64   `json:"ts"`
-	Value float64 `json:"value"`
+	TS    int64       `json:"ts"`
+	Value interface{} `json:"value"`
 }
 
 type tsDevice struct {
-	TS     int64              `json:"ts"`
-	Values map[string]float64 `json:"values"`
+	TS     int64                  `json:"ts"`
+	Values map[string]interface{} `json:"values"`
 }
 
 func adjustTSData(bytes []byte) (dataAdjust []byte) {
 	// tsDevice1 no ts
-	tsDevice1 := make(map[string]float64)
+	tsDevice1 := make(map[string]interface{})
 	err := json.Unmarshal(bytes, &tsDevice1)
 	if err == nil && len(tsDevice1) > 0 {
 		tsDeviceAdjustData := make(map[string]*tsData)
 		for k, v := range tsDevice1 {
+			switch v.(type) {
+			case map[string]interface{}:
+				goto dataType2
+			default:
+			}
 			tsDeviceAdjustData[k] = &tsData{TS: time.Now().UnixMilli(), Value: v}
 		}
 		dataAdjust, _ = json.Marshal(tsDeviceAdjustData)
@@ -645,6 +668,7 @@ func adjustTSData(bytes []byte) (dataAdjust []byte) {
 	}
 
 	// tsDevice2 has ts
+dataType2:
 	tsDevice2 := tsDevice{}
 	err = json.Unmarshal(bytes, &tsDevice2)
 	if err == nil && tsDevice2.TS != 0 {
@@ -727,12 +751,12 @@ func (r *Runtime) AppendExpression(exprInfo ExpressionInfo) {
 	if exprOld, exists := r.getExpr(exprInfo.ID); exists {
 		// remove sub-endpoint from sub-tree.
 		for _, item := range exprOld.subEndpoints {
-			r.subTree.Remove(item.path, &item)
+			r.subTree.Remove(item.WildcardPath(), &item)
 		}
 
 		// remove eval-endpoint from eval-tree.
 		for _, item := range exprOld.evalEndpoints {
-			r.evalTree.Remove(item.path, &item)
+			r.evalTree.Remove(item.WildcardPath(), &item)
 		}
 	}
 
@@ -741,11 +765,11 @@ func (r *Runtime) AppendExpression(exprInfo ExpressionInfo) {
 
 	// mount sub-endpoint to sub-tree.
 	for _, item := range exprInfo.subEndpoints {
-		r.subTree.Add(item.path, &item)
+		r.subTree.Add(item.WildcardPath(), &item)
 	}
 	// mount eval-endpoint to eval-tree.
 	for _, item := range exprInfo.evalEndpoints {
-		r.evalTree.Add(item.path, &item)
+		r.evalTree.Add(item.WildcardPath(), &item)
 	}
 
 	r.initializeExpression(context.TODO(), exprInfo)
@@ -760,12 +784,12 @@ func (r *Runtime) RemoveExpression(exprID string) {
 
 		// remove sub-endpoint from sub-tree.
 		for _, item := range exprInfo.subEndpoints {
-			r.subTree.Remove(item.path, &item)
+			r.subTree.Remove(item.WildcardPath(), &item)
 		}
 
 		// remove eval-endpoint from eval-tree.
 		for _, item := range exprInfo.evalEndpoints {
-			r.evalTree.Remove(item.path, &item)
+			r.evalTree.Remove(item.WildcardPath(), &item)
 		}
 	}
 }
@@ -811,6 +835,7 @@ func (r *Runtime) initializeExpression(ctx context.Context, expr ExpressionInfo)
 			Timestamp: time.Now().UnixNano(),
 			Metadata: map[string]string{
 				v1.MetaType:     string(v1.ETEntity),
+				v1.MetaBorn:     "initializeExpression",
 				v1.MetaEntityID: expr.EntityID},
 			Data: &v1.ProtoEvent_Patches{
 				Patches: &v1.PatchDatas{
@@ -857,6 +882,7 @@ func (r *Runtime) initializeExpression(ctx context.Context, expr ExpressionInfo)
 				Timestamp: time.Now().UnixNano(),
 				Metadata: map[string]string{
 					v1.MetaType:     string(v1.ETCache),
+					v1.MetaBorn:     "initializeExpression",
 					v1.MetaEntityID: expr.EntityID,
 					v1.MetaSender:   entityID},
 				Data: &v1.ProtoEvent_Patches{

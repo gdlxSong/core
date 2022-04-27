@@ -17,7 +17,6 @@ require (
 	github.com/olivere/elastic/v7 v7.0.29
 	github.com/panjf2000/ants/v2 v2.4.6
 	github.com/pkg/errors v0.9.1
-	github.com/shamaton/msgpack/v2 v2.1.0
 	github.com/smartystreets/assertions v1.2.0
 	github.com/smartystreets/gunit v1.4.2
 	github.com/spf13/cobra v1.1.3

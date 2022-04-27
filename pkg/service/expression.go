@@ -9,7 +9,7 @@ import (
 	xerrors "github.com/tkeel-io/core/pkg/errors"
 	zfield "github.com/tkeel-io/core/pkg/logger"
 	apim "github.com/tkeel-io/core/pkg/manager"
-	"github.com/tkeel-io/core/pkg/repository/dao"
+	"github.com/tkeel-io/core/pkg/repository"
 	"github.com/tkeel-io/kit/log"
 	"go.uber.org/zap"
 )
@@ -30,10 +30,11 @@ func (s *EntityService) AppendExpression(ctx context.Context, req *pb.AppendExpr
 		zfield.Eid(req.EntityId), zfield.Value(req.Expressions))
 
 	// append expressions.
-	expressions := make([]dao.Expression, len(req.Expressions.Expressions))
+	expressions := make([]repository.Expression, len(req.Expressions.Expressions))
 	for index, expr := range req.Expressions.Expressions {
-		expressions[index] = *dao.NewExpression(
-			req.Owner, req.EntityId, propKey(expr.Path), expr.Expression)
+		expressions[index] = *repository.NewExpression(
+			req.Owner, req.EntityId, expr.Name,
+			propKey(expr.Path), expr.Expression, expr.Description)
 	}
 
 	if err = s.apiManager.AppendExpression(ctx, expressions); nil != err {
@@ -68,11 +69,11 @@ func (s *EntityService) RemoveExpression(ctx context.Context, req *pb.RemoveExpr
 		paths = strings.Split(pathText, ",")
 	}
 
-	exprs := []dao.Expression{}
+	exprs := []repository.Expression{}
 	for index := range paths {
 		exprs = append(exprs,
-			dao.Expression{
-				Path:     paths[index],
+			repository.Expression{
+				Path:     propKey(paths[index]),
 				Owner:    en.Owner,
 				EntityID: en.ID,
 			})
@@ -103,12 +104,12 @@ func (s *EntityService) GetExpression(ctx context.Context, in *pb.GetExpressionR
 		Source: in.Source}
 	parseHeaderFrom(ctx, &en)
 
-	var expr *dao.Expression
+	var expr *repository.Expression
 	if expr, err = s.apiManager.GetExpression(ctx,
-		dao.Expression{
+		repository.Expression{
 			Path:     propKey(in.Path),
 			Owner:    en.Owner,
-			EntityID: in.EntityId,
+			EntityID: en.ID,
 		}); nil != err {
 		log.L().Error("get expression", zap.Error(err),
 			zfield.Eid(in.EntityId), zfield.Owner(en.Owner), zfield.Path(in.Path))
@@ -134,35 +135,39 @@ func (s *EntityService) ListExpression(ctx context.Context, in *pb.ListExpressio
 		Source: in.Source}
 	parseHeaderFrom(ctx, &en)
 
-	var exprs []dao.Expression
+	var exprs []*repository.Expression
 	if exprs, err = s.apiManager.ListExpression(ctx,
 		&apim.Base{
-			ID:    in.EntityId,
-			Owner: in.Owner,
+			ID:    en.ID,
+			Owner: en.Owner,
 		}); nil != err {
 		log.L().Error("list expressions", zap.Error(err),
-			zfield.Eid(in.EntityId), zfield.Owner(in.Owner))
+			zfield.Eid(en.ID), zfield.Owner(en.Owner))
 		return nil, errors.Wrap(err, "list expressions")
 	}
 
 	out = &pb.ListExpressionResp{
 		Owner:       en.Owner,
-		EntityId:    in.EntityId,
+		EntityId:    en.ID,
 		Expressions: []*pb.Expression{},
 	}
 
 	for index := range exprs {
 		out.Expressions = append(out.Expressions,
-			dao2pbExpression(&exprs[index]))
+			dao2pbExpression(exprs[index]))
 	}
 
 	return out, nil
 }
 
-func dao2pbExpression(expr *dao.Expression) *pb.Expression {
+func dao2pbExpression(expr *repository.Expression) *pb.Expression {
 	var path string
-	if expr.Type == dao.ExprTypeEval {
-		path = strings.SplitN(expr.Path, sep, 2)[1]
+	if expr.Type == repository.ExprTypeEval {
+		path = expr.Path
+		segs := strings.SplitN(expr.Path, sep, 2)
+		if len(segs) == 2 {
+			path = segs[1]
+		}
 	}
 
 	return &pb.Expression{

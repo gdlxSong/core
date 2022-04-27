@@ -31,9 +31,9 @@ import (
 	xerrors "github.com/tkeel-io/core/pkg/errors"
 	zfield "github.com/tkeel-io/core/pkg/logger"
 	"github.com/tkeel-io/core/pkg/manager/holder"
+	"github.com/tkeel-io/core/pkg/mapper"
 	"github.com/tkeel-io/core/pkg/mapper/expression"
 	"github.com/tkeel-io/core/pkg/repository"
-	"github.com/tkeel-io/core/pkg/repository/dao"
 	"github.com/tkeel-io/core/pkg/types"
 	"github.com/tkeel-io/core/pkg/util"
 	"github.com/tkeel-io/kit/log"
@@ -45,6 +45,13 @@ const respondFmt = "http://%s:%d/v1/respond"
 const (
 	sysET = string(v1.ETSystem)
 	enET  = string(v1.ETEntity)
+)
+
+const (
+	bornCreate = "apis.CreateEntity"
+	bornPatch  = "apis.PatchEntity"
+	bornGet    = "apis.GetEntity"
+	bornDelete = "apis.DeleteEntity"
 )
 
 type apiManager struct {
@@ -119,6 +126,7 @@ func (m *apiManager) CreateEntity(ctx context.Context, en *Base) (*BaseRet, erro
 		Timestamp: time.Now().UnixNano(),
 		Callback:  m.callbackAddr(),
 		Metadata: map[string]string{
+			v1.MetaBorn:      bornCreate,
 			v1.MetaType:      sysET,
 			v1.MetaRequestID: reqID,
 			v1.MetaEntityID:  en.ID},
@@ -152,10 +160,6 @@ func (m *apiManager) CreateEntity(ctx context.Context, en *Base) (*BaseRet, erro
 		log.L().Error("create entity, decode response", zfield.ReqID(reqID),
 			zap.Error(err), zfield.Eid(en.ID), zfield.Base(en.JSON()))
 		return nil, errors.Wrap(err, "create entity, decode response")
-	} else if err = m.addMapper(ctx, &baseRet); nil != err {
-		log.L().Error("create entity, decode response, list mapper", zfield.ReqID(reqID),
-			zap.Error(err), zfield.Eid(en.ID), zfield.Base(en.JSON()))
-		return nil, errors.Wrap(err, "create entity, decode response, list mapper")
 	}
 
 	return &baseRet, errors.Wrap(err, "create entity")
@@ -172,6 +176,7 @@ func (m *apiManager) PatchEntity(ctx context.Context, en *Base, pds []*v1.PatchD
 
 	// setup metadata.
 	metadata := Metadata{
+		v1.MetaBorn:      bornPatch,
 		v1.MetaType:      enET,
 		v1.MetaEntityID:  en.ID,
 		v1.MetaRequestID: reqID}
@@ -213,9 +218,6 @@ func (m *apiManager) PatchEntity(ctx context.Context, en *Base, pds []*v1.PatchD
 			zfield.ReqID(reqID), zap.Error(err), zfield.Eid(en.ID),
 			zfield.Base(en.JSON()), zfield.Entity(string(resp.Data)))
 		return out, raw, errors.Wrap(err, "patch entity, decode response")
-	} else if innerErr := m.addMapper(ctx, &baseRet); nil != err {
-		log.L().Error("patch entity, decode response, list mapper", zfield.ReqID(reqID),
-			zap.Error(innerErr), zfield.Eid(en.ID), zfield.Base(en.JSON()))
 	}
 
 	log.L().Info("processing completed", zfield.Eid(en.ID),
@@ -242,6 +244,7 @@ func (m *apiManager) GetEntity(ctx context.Context, en *Base) (*BaseRet, error) 
 			Timestamp: time.Now().UnixNano(),
 			Callback:  m.callbackAddr(),
 			Metadata: map[string]string{
+				v1.MetaBorn:      bornGet,
 				v1.MetaType:      enET,
 				v1.MetaRequestID: reqID,
 				v1.MetaEntityID:  en.ID},
@@ -273,9 +276,6 @@ func (m *apiManager) GetEntity(ctx context.Context, en *Base) (*BaseRet, error) 
 		log.L().Error("get entity, decode response", zfield.ReqID(reqID),
 			zap.Error(err), zfield.Eid(en.ID), zfield.Base(en.JSON()))
 		return nil, errors.Wrap(err, "create entity, decode response")
-	} else if innerErr := m.addMapper(ctx, &baseRet); nil != err {
-		log.L().Error("get entity, decode response, list mapper", zfield.ReqID(reqID),
-			zap.Error(innerErr), zfield.Eid(en.ID), zfield.Base(en.JSON()))
 	}
 
 	return &baseRet, errors.Wrap(err, "get entity")
@@ -298,6 +298,7 @@ func (m *apiManager) DeleteEntity(ctx context.Context, en *Base) error {
 		Timestamp: time.Now().UnixNano(),
 		Callback:  m.callbackAddr(),
 		Metadata: map[string]string{
+			v1.MetaBorn:      bornDelete,
 			v1.MetaType:      sysET,
 			v1.MetaRequestID: reqID,
 			v1.MetaEntityID:  en.ID},
@@ -329,7 +330,7 @@ func (m *apiManager) DeleteEntity(ctx context.Context, en *Base) error {
 }
 
 // AppendMapper append a mapper into entity.
-func (m *apiManager) AppendMapper(ctx context.Context, mp *dao.Mapper) error {
+func (m *apiManager) AppendMapper(ctx context.Context, mp *mapper.Mapper) error {
 	log.L().Info("entity.AppendMapper",
 		zfield.ID(mp.ID), zfield.Eid(mp.EntityID), zfield.Owner(mp.Owner))
 
@@ -351,7 +352,7 @@ func (m *apiManager) AppendMapper(ctx context.Context, mp *dao.Mapper) error {
 }
 
 // AppendMapper append a mapper into entity.
-func (m *apiManager) AppendMapperZ(ctx context.Context, mp *dao.Mapper) error {
+func (m *apiManager) AppendMapperZ(ctx context.Context, mp *mapper.Mapper) error {
 	log.L().Info("entity.AppendMapperZ",
 		zfield.ID(mp.ID), zfield.Eid(mp.EntityID), zfield.Owner(mp.Owner))
 
@@ -365,83 +366,7 @@ func (m *apiManager) AppendMapperZ(ctx context.Context, mp *dao.Mapper) error {
 	return errors.Wrap(err, "append mapper")
 }
 
-// DeleteMapper delete mapper from entity.
-func (m *apiManager) RemoveMapper(ctx context.Context, mp *dao.Mapper) error {
-	log.L().Info("entity.RemoveMapper",
-		zfield.ID(mp.ID), zfield.Eid(mp.EntityID), zfield.Owner(mp.Owner))
-
-	// delete mapper.
-	var err error
-	if err = m.entityRepo.DelMapper(ctx, mp); nil != err {
-		log.L().Error("remove mapper", zap.Error(err),
-			zfield.ID(mp.ID), zfield.Eid(mp.EntityID))
-		return errors.Wrap(err, "remove mapper")
-	}
-
-	return nil
-}
-
-func (m *apiManager) GetMapper(ctx context.Context, mp *dao.Mapper) (*dao.Mapper, error) {
-	log.L().Info("entity.GetMapper",
-		zfield.ID(mp.ID), zfield.Eid(mp.EntityID), zfield.Owner(mp.Owner))
-
-	// delete mapper.
-	var err error
-	if mp, err = m.entityRepo.GetMapper(ctx, mp); nil != err {
-		log.L().Error("get mapper", zap.Error(err),
-			zfield.ID(mp.ID), zfield.Eid(mp.EntityID))
-		return mp, errors.Wrap(err, "get mapper")
-	}
-
-	return mp, nil
-}
-
-func (m *apiManager) ListMapper(ctx context.Context, en *Base) ([]dao.Mapper, error) {
-	log.L().Info("entity.GetMapper", zfield.Eid(en.ID), zfield.Owner(en.Owner))
-
-	// delete mapper.
-	var err error
-	var mps []dao.Mapper
-	if mps, err = m.entityRepo.ListMapper(ctx,
-		m.entityRepo.GetLastRevision(ctx),
-		&dao.ListMapperReq{
-			Owner:    en.Owner,
-			EntityID: en.ID,
-		}); nil != err {
-		log.L().Error("list mapper", zap.Error(err),
-			zfield.Eid(en.ID), zfield.Owner(en.Owner))
-		return mps, errors.Wrap(err, "list mapper")
-	}
-
-	return mps, nil
-}
-
-func (m *apiManager) addMapper(ctx context.Context, base *BaseRet) error {
-	return nil
-	// mappers, err := m.entityRepo.ListMapper(ctx,
-	// 	m.entityRepo.GetLastRevision(ctx),
-	// 	&dao.ListMapperReq{
-	// 		Owner:    base.Owner,
-	// 		EntityID: base.ID,
-	// 	})
-	// if nil != err {
-	// 	return errors.Wrap(err, "list mapper by entity id.")
-	// }
-
-	// for _, mp := range mappers {
-	// 	base.Mappers = append(base.Mappers,
-	// 		&v1.Mapper{
-	// 			Id:          mp.ID,
-	// 			Tql:         mp.TQL,
-	// 			Name:        mp.Name,
-	// 			Description: mp.Description,
-	// 		})
-	// }
-
-	// return nil
-}
-
-func checkMapper(m *dao.Mapper) error {
+func checkMapper(m *mapper.Mapper) error {
 	sep := "."
 	FieldProps := "properties"
 	if m.ID == "" {
@@ -496,7 +421,7 @@ func checkMapper(m *dao.Mapper) error {
 	return nil
 }
 
-func checkExpression(expr *dao.Expression) error {
+func checkExpression(expr *repository.Expression) error {
 	sep := "."
 	FieldProps := "properties"
 
@@ -546,7 +471,7 @@ func checkExpression(expr *dao.Expression) error {
 }
 
 // implement apis for Expression.
-func (m *apiManager) AppendExpression(ctx context.Context, exprs []dao.Expression) error {
+func (m *apiManager) AppendExpression(ctx context.Context, exprs []repository.Expression) error {
 	// validate expressions.
 	for index, expr := range exprs {
 		if err := checkExpression(&exprs[index]); nil != err {
@@ -560,7 +485,7 @@ func (m *apiManager) AppendExpression(ctx context.Context, exprs []dao.Expressio
 }
 
 // implement apis for Expression.
-func (m *apiManager) appendExpression(ctx context.Context, exprs []dao.Expression) error {
+func (m *apiManager) appendExpression(ctx context.Context, exprs []repository.Expression) error {
 	// validate expressions.
 	for _, expr := range exprs {
 		if err := expression.Validate(expr); nil != err {
@@ -584,9 +509,14 @@ func (m *apiManager) appendExpression(ctx context.Context, exprs []dao.Expressio
 	return nil
 }
 
-func (m *apiManager) RemoveExpression(ctx context.Context, exprs []dao.Expression) error {
+func (m *apiManager) RemoveExpression(ctx context.Context, exprs []repository.Expression) error {
 	// delete expressions.
 	for index := range exprs {
+		log.L().Debug("remove expression",
+			zfield.Eid(exprs[index].EntityID),
+			zfield.Owner(exprs[index].Owner),
+			zfield.Path(exprs[index].Path),
+			zfield.Expr(exprs[index].Expression))
 		if err := m.entityRepo.DelExpression(ctx, exprs[index]); nil != err {
 			log.L().Error("delete expression", zap.Error(err), zfield.Path(exprs[index].Path),
 				zfield.Eid(exprs[index].EntityID), zfield.Owner(exprs[index].Owner), zfield.Expr(exprs[index].Expression))
@@ -596,7 +526,7 @@ func (m *apiManager) RemoveExpression(ctx context.Context, exprs []dao.Expressio
 	return nil
 }
 
-func (m *apiManager) GetExpression(ctx context.Context, expr dao.Expression) (*dao.Expression, error) {
+func (m *apiManager) GetExpression(ctx context.Context, expr repository.Expression) (*repository.Expression, error) {
 	// get expression.
 	expr, err := m.entityRepo.GetExpression(ctx, expr)
 	if nil != err {
@@ -607,13 +537,13 @@ func (m *apiManager) GetExpression(ctx context.Context, expr dao.Expression) (*d
 	return &expr, nil
 }
 
-func (m *apiManager) ListExpression(ctx context.Context, en *Base) ([]dao.Expression, error) {
+func (m *apiManager) ListExpression(ctx context.Context, en *Base) ([]*repository.Expression, error) {
 	// list expressions.
 	var err error
-	var exprs []dao.Expression
+	var exprs []*repository.Expression
 	if exprs, err = m.entityRepo.ListExpression(ctx,
 		m.entityRepo.GetLastRevision(ctx),
-		&dao.ListExprReq{
+		&repository.ListExprReq{
 			Owner:    en.Owner,
 			EntityID: en.ID,
 		}); nil != err {
@@ -625,11 +555,11 @@ func (m *apiManager) ListExpression(ctx context.Context, en *Base) ([]dao.Expres
 	return exprs, nil
 }
 
-func convExprs(mp dao.Mapper) []dao.Expression {
+func convExprs(mp mapper.Mapper) []repository.Expression {
 	segs := strings.SplitN(mp.TQL, "select", 2)
 	arr := strings.Split(segs[1], ",")
 
-	exprs := []dao.Expression{}
+	exprs := []repository.Expression{}
 	for index := range arr {
 		segs = strings.Split(arr[index], " as ")
 
@@ -639,7 +569,8 @@ func convExprs(mp dao.Mapper) []dao.Expression {
 		}
 
 		exprs = append(exprs,
-			*dao.NewExpression(mp.Owner, mp.EntityID, path, segs[0]))
+			*repository.NewExpression(
+				mp.Owner, mp.EntityID, mp.Name, path, segs[0], mp.Description))
 	}
 	return exprs
 }

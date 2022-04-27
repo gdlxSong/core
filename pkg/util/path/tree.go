@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+
+	zfield "github.com/tkeel-io/core/pkg/logger"
+	"github.com/tkeel-io/kit/log"
 )
 
 type node struct {
@@ -43,6 +46,9 @@ type Tree struct {
 	// The multi level wildcard character. Default "#".
 	WildcardSome string
 
+	// The count of node
+	counter int
+
 	root  *node
 	mutex sync.RWMutex
 }
@@ -54,6 +60,7 @@ func (t *Tree) Add(path string, value Node) bool {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
+	log.L().Debug("tree add path", zfield.Path(path), zfield.Value(value))
 	return t.add(value, 0, strings.Split(fmtPath(path), t.Separator), t.root)
 }
 
@@ -150,6 +157,7 @@ func (t *Tree) Empty(path string) bool {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
+	log.L().Debug("tree remove path", zfield.Path(path))
 	return t.remove(nil, 0, strings.Split(fmtPath(path), t.Separator), t.root)
 }
 
@@ -287,6 +295,7 @@ func (t *Tree) matchPrefix(result []*node, i int, segments []string, node *node)
 	// match segments and get children.
 	if segment != t.WildcardOne && segment != t.WildcardSome {
 		if child, ok := node.children[segment]; ok {
+			//result = append(result, child)
 			result = t.matchPrefix(result, i+1, segments, child)
 		}
 	}
