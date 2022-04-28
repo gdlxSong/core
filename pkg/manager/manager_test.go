@@ -51,3 +51,5 @@ func Test_checkTQL(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkExpression(t *testing.T) {}

@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package api.core.v1;
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/tkeel-io/core/api/core/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.core.v1";
+
+
+service Schema {
+    rpc CreateSchema (CreateSchemaRequest) returns (CreateSchemaResponse) {
+    option (google.api.http) = {
+      post : "/schemas"
+      body: "schema"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+        summary: "Create a schema";
+        operation_id: "CreateSchema";
+        tags: "Schema";
+        responses: {
+          key: "200"
+          value: {
+            description: "OK";
+        }
+      }
+    };
+  };
+}
+
+
+message CreateSchemaRequest {
+  google.protobuf.Value schema = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "schema value"}];
+}
+
+message CreateSchemaResponse {}
+
+
+
+
+
+
+
+
+
+
+

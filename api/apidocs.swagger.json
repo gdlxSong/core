@@ -19,6 +19,9 @@
     },
     {
       "name": "Topic"
+    },
+    {
+      "name": "Schema"
     }
   ],
   "consumes": [
@@ -1387,6 +1390,41 @@
         ]
       }
     },
+    "/schemas": {
+      "post": {
+        "summary": "Create a schema",
+        "operationId": "CreateSchema",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1CreateSchemaResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "schema value",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "description": "schema value"
+            }
+          }
+        ],
+        "tags": [
+          "Schema"
+        ]
+      }
+    },
     "/search": {
       "delete": {
         "summary": "Delete objects by id",
@@ -1923,6 +1961,9 @@
         }
       },
       "description": "Append Mapper Response."
+    },
+    "v1CreateSchemaResponse": {
+      "type": "object"
     },
     "v1DeleteByIDResponse": {
       "type": "object"
